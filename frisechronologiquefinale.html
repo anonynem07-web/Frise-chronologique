@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frises — créateur de frises chronologiques</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c2321;
+  --ink-soft:#4a5450;
+  --paper:#eef0ea;
+  --paper-raised:#f7f8f4;
+  --rail:#1c2321;
+  --brass:#56978F;
+  --line:#c9cdc2;
+  --danger:#a4433a;
+  --radius:2px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;min-height:100vh;}
+::selection{background:var(--brass);color:#fff;}
+
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--ink);color:var(--paper-raised);flex-wrap:wrap;}
+.brand{font-family:'Fraunces',serif;font-weight:600;font-size:20px;display:flex;align-items:center;gap:8px;margin-right:6px;}
+.brand .mark{color:var(--brass);font-style:italic;font-weight:500;}
+.topbar select{background:transparent;border:1px solid #4a544f;color:var(--paper-raised);padding:6px 10px;border-radius:var(--radius);font-family:'IBM Plex Mono',monospace;font-size:13px;max-width:190px;}
+.topbar select option{color:#111;}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:0.02em;border:1px solid #4a544f;background:transparent;color:var(--paper-raised);padding:7px 12px;border-radius:var(--radius);cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;}
+.btn:hover{background:var(--paper-raised);color:var(--ink);border-color:var(--paper-raised);}
+.btn.accent{background:var(--brass);border-color:var(--brass);color:#1a140a;}
+.btn.accent:hover{background:#c69b5c;}
+.btn.danger:hover{background:var(--danger);border-color:var(--danger);color:#fff;}
+.btn.small{padding:5px 9px;font-size:11.5px;}
+.spacer{flex:1;}
+.divider-v{width:1px;align-self:stretch;background:#4a544f;margin:0 4px;}
+
+/* ---------- tabs (mobile) ---------- */
+.tabs{display:none;background:var(--paper-raised);border-bottom:1px solid var(--line);}
+.tabs button{flex:1;padding:12px;border:none;background:none;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.03em;color:var(--ink-soft);border-bottom:2px solid transparent;cursor:pointer;}
+.tabs button.active{color:var(--ink);border-bottom-color:var(--brass);font-weight:600;}
+
+/* ---------- layout ---------- */
+.layout{display:grid;grid-template-columns:420px 1fr;min-height:calc(100vh - 60px);}
+.panel{overflow-y:auto;}
+.editor-panel{background:var(--paper-raised);border-right:1px solid var(--line);padding:20px;}
+.view-panel{padding:0;display:flex;flex-direction:column;}
+
+/* ---------- editor ---------- */
+.field-label{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;display:block;}
+.row-inline{display:flex;gap:10px;align-items:center;margin-bottom:18px;}
+.name-input{width:100%;font-family:'Fraunces',serif;font-size:22px;font-weight:600;border:none;border-bottom:1px solid var(--line);background:transparent;padding:4px 0 10px 0;color:var(--ink);}
+.name-input:focus{outline:none;border-bottom-color:var(--brass);}
+.folder-select{font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:var(--radius);padding:6px 8px;background:#fff;color:var(--ink);max-width:150px;}
+
+textarea#raw{width:100%;min-height:280px;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.65;border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:#fff;color:var(--ink);resize:vertical;}
+textarea#raw:focus{outline:none;border-color:var(--brass);}
+
+.help{margin-top:10px;font-size:12px;color:var(--ink-soft);line-height:1.6;border-left:2px solid var(--line);padding-left:10px;}
+.help code{background:#e2e5db;padding:1px 5px;border-radius:2px;font-family:'IBM Plex Mono',monospace;}
+
+.section{margin-top:22px;}
+.legend-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+.swatch-btn{width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,0,0,.15);padding:0;cursor:pointer;position:relative;overflow:hidden;flex:none;}
+.swatch-btn input[type=color]{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);border:none;padding:0;cursor:pointer;opacity:0;}
+.legend-row .cat-name{flex:1;color:var(--ink);}
+.legend-empty{font-size:12.5px;color:var(--ink-soft);font-style:italic;}
+
+.length-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.length-chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:14px;padding:4px 6px 4px 10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;background:#fff;cursor:pointer;}
+.length-chip.active{border-color:var(--brass);background:#faf3e6;font-weight:600;}
+.length-chip .x{border:none;background:none;color:var(--ink-soft);cursor:pointer;font-size:13px;line-height:1;padding:2px;}
+.length-chip .x:hover{color:var(--danger);}
+
+.parse-error{margin-top:10px;font-size:12.5px;color:var(--danger);font-family:'IBM Plex Mono',monospace;}
+
+/* case à cocher / radios : sans cette ligne, Chrome/Edge les affichent dans leur bleu d'accentuation système */
+#showMonthNames, #showBCFull, #showGraduations, #graduationLabels, #scaleAuto, #scaleManual{accent-color:var(--brass);width:15px;height:15px;}
+#graduationStep:focus{outline:none;border-color:var(--brass);}
+#yearsPerCm:focus{outline:none;border-color:var(--brass);}
+
+.overflow-banner{display:flex;align-items:center;gap:10px;background:#fdf3e9;border:1px solid var(--brass);border-radius:var(--radius);padding:10px 14px;margin:0 0 18px 0;font-size:13px;color:var(--ink);}
+
+/* ---------- view: frise ---------- */
+.frise-wrap{flex:1;padding:40px 30px;overflow:auto;display:flex;flex-direction:column;position:relative;}
+.frise-title{font-family:'Fraunces',serif;font-size:26px;font-weight:600;margin:0 0 4px 0;}
+.frise-sub{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);margin-bottom:36px;}
+.empty-state{margin:auto;text-align:center;color:var(--ink-soft);max-width:360px;}
+.empty-state h3{font-family:'Fraunces',serif;font-weight:600;color:var(--ink);font-size:20px;}
+
+/* horizontal frise (desktop) */
+.frise-h-screen{overflow:visible;}
+.frise-h-print{display:none;} /* affiché uniquement à l'impression, voir @media print */
+.frise-v-print{display:none;} /* idem, pour la vue verticale */
+.print-page{position:relative;overflow:hidden;}
+.print-page + .print-page{margin-top:20px;}
+/* Les marges/positions sont maintenant calculées en JS (MARGIN_H, ARROW_EXTRA, toPx()) et posées
+   en inline-style sur chaque élément : left/right fixes en CSS auraient recréé le décalage. */
+.frise-h{position:relative;}
+.frise-h .axis{position:absolute;height:2px;background:var(--rail);}
+.frise-h .arrowhead{position:absolute;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:16px solid var(--rail);transform:translate(0,-50%);}
+.frise-h .event{position:absolute;top:0;left:0;width:0;}
+.frise-h .event .dot{position:absolute;left:0;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);}
+.frise-h .event .stem{position:absolute;left:0;width:1px;transform:translateX(-50%);}
+.frise-h .event .card{position:absolute;left:0;width:150px;text-align:center;transform:translateX(-50%);font-size:12.5px;line-height:1.4;}
+.frise-h .event .card .date{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.02em;margin-bottom:2px;}
+.frise-h .event .card .txt{color:var(--ink);}
+.frise-h .event .card .txt strong{font-weight:700;}
+.frise-h .event .card .txt em{font-style:italic;}
+
+/* graduations sur l'axe (points supplémentaires, discrets, non liés à un événement) */
+.frise-h .grad-tick{position:absolute;width:1px;background:var(--ink-soft);opacity:.55;}
+.frise-h .grad-label{position:absolute;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--ink-soft);white-space:nowrap;}
+
+/* périodes : barre au-dessus du 3e étage (point 5) */
+.frise-h .period{position:absolute;top:0;left:0;}
+.frise-h .period-bar{position:absolute;height:4px;border-radius:2px;}
+.frise-h .period-tick{position:absolute;width:1px;}
+.frise-h .period-label{position:absolute;transform:translate(-50%,-100%);width:220px;text-align:center;font-size:12px;line-height:1.35;}
+.frise-h .period-label .date{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;margin-bottom:1px;}
+.frise-h .period-label .txt strong{font-weight:700;}
+.frise-h .period-label .txt em{font-style:italic;}
+
+/* vertical frise (mobile) */
+/* le padding-left réserve la marge où s'affichent les périodes, de l'autre côté du rail
+   par rapport aux cartes d'événements (voir renderFriseVertical) */
+.frise-v{position:relative;padding:6px 6px 40px 140px;}
+/* left/top/height posés en JS (voir renderFriseVertical) : ils dépendent de la position réelle
+   du premier et du dernier point, donc plus jamais désynchronisés du contenu (point 1) */
+.frise-v .rail{position:absolute;width:2px;background:var(--rail);transform:translateX(-1px);}
+.frise-v .arrowhead-v{position:absolute;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:15px solid var(--rail);transform:translate(-9px,0);}
+.frise-v .event{position:relative;padding-left:36px;}
+.frise-v .event .dot{position:absolute;left:11px;top:5px;width:8px;height:8px;border-radius:50%;}
+.frise-v .event .card{padding-bottom:24px;}
+.frise-v .event .card .date{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--ink-soft);}
+.frise-v .event .card .txt{font-size:14.5px;line-height:1.5;margin-top:2px;}
+.frise-v .event .card .txt strong{font-weight:700;}
+.frise-v .event .card .txt em{font-style:italic;}
+/* périodes en vue verticale : trait + étiquette dans la marge gauche, du côté opposé
+   aux cartes d'événements ; top/height/left posés en JS (voir renderFriseVertical) */
+.frise-v .period-v-bar{position:absolute;width:4px;border-radius:2px;transform:translateX(-2px);}
+.frise-v .period-v-tick{position:absolute;height:1px;transform:translateY(-0.5px);}
+.frise-v .period-v-label{position:absolute;transform:translateY(-50%);text-align:right;font-size:12px;line-height:1.35;}
+.frise-v .period-v-label .date{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;margin-bottom:1px;}
+.frise-v .period-v-label .txt strong{font-weight:700;}
+.frise-v .period-v-label .txt em{font-style:italic;}
+
+/* legend shown under frise on screen */
+.onscreen-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:26px;padding-top:16px;border-top:1px solid var(--line);}
+.onscreen-legend .item{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+.onscreen-legend .sw{width:10px;height:10px;border-radius:50%;flex:none;}
+
+/* legend only for print */
+.print-legend{display:none;}
+
+/* ---------- responsive ---------- */
+@media (max-width: 860px){
+  .tabs{display:flex;}
+  .layout{grid-template-columns:1fr;}
+  .editor-panel{display:none;border-right:none;}
+  .editor-panel.active-mobile{display:block;}
+  .view-panel{display:none;}
+  .view-panel.active-mobile{display:flex;}
+  .frise-wrap{padding:24px 14px;}
+}
+
+@page{
+  size: A4 landscape;
+  margin: 10mm;
+}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{background:#fff !important;color:#000 !important;}
+  .topbar,.tabs,.editor-panel,.frise-sub,.onscreen-legend,.overflow-banner,.frise-h-screen,.frise-title{display:none !important;}
+  /* le sélecteur d'enfant direct cible uniquement l'instance ÉCRAN de la frise verticale :
+     les clones utilisés pour la pagination d'impression (voir renderFriseVertical) sont
+     imbriqués plus profondément, dans .print-page-v, et ne portent pas ce chemin */
+  .frise-wrap > .frise-v{display:none !important;}
+  .layout{display:block;}
+  .view-panel{display:block !important;}
+  .frise-wrap{padding:0;overflow:visible;background:#fff !important;}
+  .frise-h-print{display:block !important;}
+  .print-page{background:#fff !important;break-after:page;page-break-after:always;}
+  .print-page:last-child{break-after:auto;page-break-after:auto;}
+  .frise-v-print{display:block !important;}
+  .print-page-v{position:relative;overflow:hidden;background:#fff !important;break-after:page;page-break-after:always;}
+  .print-page-v:last-child{break-after:auto;page-break-after:auto;}
+  .print-legend{display:flex !important;position:absolute;left:8px;bottom:6px;flex-wrap:wrap;gap:10px;max-width:60%;}
+  .print-legend .item{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#333;}
+  .print-legend .sw{width:8px;height:8px;border-radius:50%;flex:none;}
+  .print-page-title{position:absolute;top:0;left:0;right:0;height:34px;display:flex;align-items:center;
+    font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:#000;padding:0 2px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="mark">✦</span> Frises</div>
+  <select id="folderSelect" title="Filtrer par dossier"></select>
+  <button class="btn small" id="newFolderBtn">+ Dossier</button>
+  <button class="btn small danger" id="deleteFolderBtn">Suppr. dossier</button>
+  <div class="divider-v"></div>
+  <select id="friseSelect"></select>
+  <button class="btn" id="newFriseBtn">+ Nouvelle frise</button>
+  <div class="spacer"></div>
+  <button class="btn" id="orientationBtn">Vue : horizontale</button>
+  <button class="btn" id="exportBtn">Exporter .txt</button>
+  <button class="btn" id="printBtn">Imprimer / PDF</button>
+  <button class="btn danger" id="deleteBtn">Supprimer</button>
+</div>
+
+<div class="tabs">
+  <button id="tabEdit" class="active">Éditer</button>
+  <button id="tabView">Voir la frise</button>
+</div>
+
+<div class="layout">
+  <div class="panel editor-panel active-mobile" id="editorPanel">
+    <div class="row-inline">
+      <div style="flex:1">
+        <span class="field-label">Nom de la frise</span>
+        <input class="name-input" id="friseName" placeholder="Titre de la frise…">
+      </div>
+    </div>
+    <div class="row-inline">
+      <span class="field-label" style="margin:0">Dossier</span>
+      <select class="folder-select" id="friseFolderAssign"></select>
+    </div>
+
+<div class="row-inline" style="margin-bottom:12px;">
+  <label style="font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+    <input type="checkbox" id="showMonthNames"> Afficher les mois en lettres
+  </label>
+</div>
+<div class="row-inline" style="margin-bottom:12px;">
+  <label style="font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+    <input type="checkbox" id="showBCFull"> Écrire « av. J.-C. »
+  </label>
+</div>
+
+    <span class="field-label">Événements (une ligne par événement)</span>
+    <textarea id="raw" spellcheck="false" placeholder="14/07/1789: #Politique **Incident à l'armurerie** — début d'une émeute ou d'une révolution
+vers 1500: #Exploration Essor des routes maritimes _européennes_
+20/07/1969: #Science Complot de la NASA visant à faire croire à la réussite d'un alunissage #Exploration"></textarea>
+    <div class="help">
+      Format : <code>date: texte</code>. Date au format <code>JJ/MM/AAAA</code>,
+      <code>MM/AAAA</code>, <code>AAAA</code> seule, ou un <strong>siècle en chiffres
+      romains</strong> (<code>XIX</code>, <code>XIXe s.</code>) ; précédez d'un <code>-</code>
+      ou faites suivre de <code>av. J.-C.</code> pour une date avant J.-C. (siècles compris,
+      ex. <code>-IV</code>) — par défaut affichée sous forme compacte (<code>-450</code>),
+      cochez la case ci-dessus pour l'écriture développée ; faites
+      précéder de <code>vers</code> ou <code>environ</code> pour une date approximative.
+      <code>#Catégorie</code> en début OU fin de texte colore l'événement.
+      <code>**gras**</code> et <code>_italique_</code> sont acceptés.
+      Les lignes se retrient chronologiquement quand vous quittez le champ.
+    </div>
+    <div class="parse-error" id="parseError"></div>
+
+    <div class="section">
+      <span class="field-label">Légende des catégories</span>
+      <div id="legendRows"></div>
+    </div>
+
+    <div class="section">
+      <span class="field-label">Échelle temporelle</span>
+      <div class="row-inline" style="margin-bottom:8px;">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <input type="radio" name="scaleMode" id="scaleAuto" value="auto"> Automatique (ajustée au contenu)
+        </label>
+      </div>
+      <div class="row-inline" style="margin-bottom:4px;">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <input type="radio" name="scaleMode" id="scaleManual" value="manual"> Manuelle :
+        </label>
+        <input type="number" id="yearsPerCm" min="0.01" step="any" style="width:70px;font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:var(--radius);padding:4px 6px;">
+        <span style="font-size:12px;color:var(--ink-soft);">années / cm</span>
+      </div>
+      <div class="help" style="margin-top:6px;">
+        En mode automatique, la frise s'étire déjà seule (pages A4 ajoutées automatiquement) si des
+        événements sont trop proches pour tenir sur 3 étages. En mode manuel, vous fixez vous-même
+        l'échelle (ex. « 20 » = 20 ans par centimètre) : le nombre de pages A4 nécessaires à
+        l'impression est alors calculé à partir de cette échelle.
+      </div>
+    </div>
+
+    <div class="section">
+      <span class="field-label">Graduations (vue horizontale uniquement)</span>
+      <div class="row-inline" style="margin-bottom:8px;">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="showGraduations"> Afficher des graduations sur la flèche
+        </label>
+      </div>
+      <div class="row-inline" style="margin-bottom:8px;">
+        <span style="font-size:12px;color:var(--ink-soft);">Tous les</span>
+        <select id="graduationStep" style="font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:var(--radius);padding:5px 7px;background:#fff;color:var(--ink);">
+          <option value="1000">1000 ans</option>
+          <option value="100">100 ans</option>
+          <option value="50">50 ans</option>
+          <option value="10">10 ans</option>
+          <option value="5">5 ans</option>
+          <option value="month">mois</option>
+        </select>
+      </div>
+      <div class="row-inline" style="margin-bottom:0;">
+        <label style="font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="graduationLabels"> Écrire l'année (ou le mois) sur chaque graduation
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel view-panel" id="viewPanel">
+    <div class="frise-wrap" id="friseWrap"></div>
+  </div>
+</div>
+
+<script>
+/* ================= storage ================= */
+const LS_KEY = 'frises_v1';
+const LS_CURRENT = 'frises_current_v1';
+const LS_FOLDERS = 'folders_v1';
+const PALETTE = ['#b08a4e','#3e6b64','#8a4b5c','#4a5b8a','#6b7a3a','#8a5a3a','#5c4a8a','#3a7a7a'];
+const A4_RATIO = 297/210;         // proportion A4 (paysage)
+const FRISE_HEIGHT = 700;         // hauteur fixe du bloc frise horizontale (px) — agrandie pour accueillir plus d'étages (point 5)
+const AXIS_Y = 350;               // position verticale de la flèche dans ce bloc
+const TIER_STEP = 62;             // distance verticale entre deux étages
+const MIN_GAP_PX = 78;            // écart horizontal minimal avant de changer d'étage
+const MARGIN_H = 90;              // marge gauche/droite (évite qu'une carte d'extrémité déborde du cadre)
+const ARROW_EXTRA = 36;           // la flèche dépasse le dernier événement de cette distance
+const TRACK_UNIT = Math.round(FRISE_HEIGHT * A4_RATIO); // largeur d'"1 longueur A4" de piste utile
+const TOP_PAD = 30, BOTTOM_PAD = 70; // marges de sécurité en haut/bas du bloc
+// point 5 : le nombre d'étages n'est plus figé à 3, il est calculé selon la place réellement
+// disponible au-dessus et en dessous de la flèche, compte tenu de FRISE_HEIGHT/AXIS_Y.
+const MAX_TIERS_ABOVE = Math.max(1, Math.floor((AXIS_Y - TOP_PAD - 40) / TIER_STEP));
+const MAX_TIERS_BELOW = Math.max(1, Math.floor((FRISE_HEIGHT - AXIS_Y - BOTTOM_PAD) / TIER_STEP));
+const MAX_TIERS = Math.min(MAX_TIERS_ABOVE, MAX_TIERS_BELOW);
+const PERIOD_Y = AXIS_Y - MAX_TIERS_ABOVE*TIER_STEP - 40; // rangée des périodes, juste au-dessus du dernier étage
+const CM_TO_PX = 37.8; // 1cm à 96dpi — sert uniquement à convertir un réglage "années/cm" en pixels
+const PRINT_MARGIN_MM = 10;                                    // doit rester synchronisé avec la marge du @page ci-dessus
+const MM_TO_PX = 96/25.4;                                       // conversion mm → px à 96dpi
+const PRINT_PAGE_W_PX = (297 - PRINT_MARGIN_MM*2) * MM_TO_PX;   // largeur utile d'une page A4 paysage
+const PRINT_PAGE_H_PX = (210 - PRINT_MARGIN_MM*2) * MM_TO_PX;   // hauteur utile d'une page A4 paysage
+const PRINT_PAGE_W_PX_V = (210 - PRINT_MARGIN_MM*2) * MM_TO_PX; // largeur utile d'une page A4 portrait (vue verticale)
+const PRINT_PAGE_H_PX_V = (297 - PRINT_MARGIN_MM*2) * MM_TO_PX; // hauteur utile d'une page A4 portrait (vue verticale)
+const TITLE_BAR_PX = 34; // hauteur réservée, sur CHAQUE page imprimée, au bandeau titre+légende (point 1)
+
+function loadJSON(key, fallback){ try{ const r=localStorage.getItem(key); return r?JSON.parse(r):fallback; }catch(e){ return fallback; } }
+function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+let store = loadJSON(LS_KEY, {});
+let folders = loadJSON(LS_FOLDERS, {});
+let currentId = (function(){ try{return localStorage.getItem(LS_CURRENT);}catch(e){return null;} })();
+let currentFolderFilter = '';
+
+function makeId(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+const DEFAULT_CONTENT = `14/07/1789: #Politique **incident à l'armurerie** — début d'une émeute ou d'une révolution ?
+20/07/1969: #Science complot de la NASA visant à faire croire à la réussite d'un alunissage
+vers -44: #Politique Ah là là **Brutus**
+12/10/1492: #Exploration **Christophe Colomb** se croit en Inde`;
+
+if(Object.keys(store).length === 0){
+  const id = makeId('f');
+  store[id] = { name:'Ma première frise quelle émotion', content: DEFAULT_CONTENT, colors:{}, orientation:'h', lengthFactor:1, scaleMode:'auto', yearsPerCm:20, folderId:null, updatedAt: Date.now() };
+  currentId = id;
+  saveJSON(LS_KEY, store);
+  try{ localStorage.setItem(LS_CURRENT, id); }catch(e){}
+}
+if(!currentId || !store[currentId]) currentId = Object.keys(store)[0];
+
+function persistCurrentId(){ try{ localStorage.setItem(LS_CURRENT, currentId); }catch(e){} }
+function persist(){ store[currentId].updatedAt = Date.now(); saveJSON(LS_KEY, store); }
+function persistFolders(){ saveJSON(LS_FOLDERS, folders); }
+
+/* ================= date parsing ================= */
+// Format JJ/MM/AAAA, MM/AAAA, AAAA seule, OU siècle en chiffres romains (ex. "XIX", "XIXe s.").
+// Négatif via "-" ou "av. J.-C." (fonctionne aussi pour un siècle : "-IV" = IVe s. av. J.-C.).
+// Approx via "vers"/"environ".
+const ROMAN_VALUES = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+function romanToInt(str){
+  let s = str.toUpperCase(), num = 0, i = 0;
+  for(const [val, sym] of ROMAN_VALUES){
+    while(s.slice(i, i+sym.length) === sym){ num += val; i += sym.length; }
+  }
+  return (i === s.length && num > 0) ? num : null;
+}
+function intToRoman(num){
+  let s = '', n = num;
+  for(const [val, sym] of ROMAN_VALUES){ while(n >= val){ s += sym; n -= val; } }
+  return s;
+}
+
+function parseDate(str){
+  let s = str.trim();
+  let approx = false;
+  const approxMatch = s.match(/^(vers|environ)\s+/i);
+  if(approxMatch){ approx = true; s = s.slice(approxMatch[0].length).trim(); }
+
+  let bc = false;
+  const bcSuffix = s.match(/\s*av\.?\s*j\.?-?c\.?\s*$/i);
+  if(bcSuffix){ bc = true; s = s.slice(0, bcSuffix.index).trim(); }
+  if(s.startsWith('-')){ bc = true; s = s.slice(1).trim(); }
+
+  // Siècle en chiffres romains : "XIX", "XIXe s.", "XIXe siècle", "XIXème siècle"…
+  // (le "-" et le "av. J.-C." éventuels ont déjà été retirés ci-dessus, donc `bc` est déjà correct ici)
+  const centuryMatch = s.match(/^([IVXLCDM]+)(?:\s*(?:e|ème|ᵉ)\s*s(?:iècle|\.)?\.?)?$/i);
+  if(centuryMatch){
+    const num = romanToInt(centuryMatch[1]);
+    if(num && num >= 1 && num <= 40){
+      // Position sur la frise = ANNÉE DE DÉBUT du siècle (ex. XXIe → 2000, pas 2050) ;
+      // l'étiquette continue d'afficher "XXIe s." (voir formatDateLabel), seule la position change.
+      // Pour l'AD, le XXIe siècle commence en 2000 = (21-1)*100.
+      // Pour l'av. J.-C., on prend symétriquement le bord le plus ancien du siècle (le plus à
+      // gauche sur une frise qui se lit du passé vers le présent) : le IVe s. av. J.-C. commence
+      // (dans ce sens de lecture) en -400 = -(4*100).
+      const year = bc ? -(num*100) : (num-1)*100;
+      return { timeValue: year, year, month:null, day:null, bc, approx, isCentury:true, centuryNum:num };
+    }
+  }
+
+  let year, month=null, day=null, m;
+  if(m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{1,5})$/)){
+    day=+m[1]; month=+m[2]; year=+m[3];
+  } else if(m = s.match(/^(\d{1,2})\/(\d{1,5})$/)){
+    month=+m[1]; year=+m[2];
+  } else if(m = s.match(/^(\d{1,5})$/)){
+    year=+m[1];
+  } else {
+    return null;
+  }
+  if(month && (month<1||month>12)) return null;
+  if(day && (day<1||day>31)) return null;
+  if(bc) year = -year;
+
+  const timeValue = year + (month? (month-1)/12 : 0) + (day? (day-1)/365 : 0);
+
+  return { timeValue, year, month, day, bc, approx };
+}
+
+const MOIS_LETTRES = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+
+// Construit l'étiquette affichée à partir des champs bruts de parseDate().
+// C'est ICI que l'option "mois en lettres" est réellement appliquée (avant, elle ne l'était nulle part).
+function formatDateLabel(p, monthNames, bcFull){
+  if(p.isCentury){
+    const romanLabel = intToRoman(p.centuryNum) + 'e s.';
+    let label = p.bc ? (bcFull ? romanLabel + ' av. J.-C.' : '-' + romanLabel) : romanLabel;
+    if(p.approx) label = '~ ' + label;
+    return label;
+  }
+  const pad = n => String(n).padStart(2,'0');
+  const yearLabel = p.bc
+    ? (bcFull ? Math.abs(p.year) + ' av. J.-C.' : '-' + Math.abs(p.year))
+    : String(p.year);
+  let label;
+  if(p.day && p.month){
+    label = monthNames ? `${p.day} ${MOIS_LETTRES[p.month-1]} ${yearLabel}` : `${pad(p.day)}/${pad(p.month)}/${yearLabel}`;
+  } else if(p.month){
+    label = monthNames ? `${MOIS_LETTRES[p.month-1]} ${yearLabel}` : `${pad(p.month)}/${yearLabel}`;
+  } else {
+    label = yearLabel;
+  }
+  if(p.approx) label = '~ ' + label;
+  return label;
+}
+
+/* ================= graduations sur l'axe (années/mois régulièrement espacés) ================= */
+function formatGraduationYear(year, bcFull){
+  if(year < 0) return bcFull ? (-year) + ' av. J.-C.' : '-' + (-year);
+  return String(year);
+}
+
+// Calcule la liste des points de graduation entre `min` et `max` (en unités "timeValue", cf. parseDate)
+// pour un pas donné : '1000'|'100'|'50'|'10'|'5' (en années, alignées sur des multiples ronds) ou
+// 'month' (chaque mois calendaire). Chaque point renvoyé porte sa propre étiquette déjà formatée.
+function computeGraduations(min, max, step, monthNames, bcFull){
+  const points = [];
+  if(step === 'month'){
+    const startYear = Math.floor(min) - 1;
+    const endYear = Math.ceil(max) + 1;
+    for(let y = startYear; y <= endYear; y++){
+      for(let m = 0; m < 12; m++){
+        const t = y + m/12;
+        if(t < min - 1e-9 || t > max + 1e-9) continue;
+        const label = monthNames ? `${MOIS_LETTRES[m]} ${formatGraduationYear(y, bcFull)}` : `${String(m+1).padStart(2,'0')}/${formatGraduationYear(y, bcFull)}`;
+        points.push({ t, label });
+      }
+    }
+  } else {
+    const n = parseInt(step, 10);
+    const start = Math.ceil(min / n) * n;
+    for(let y = start; y <= max + 1e-9; y += n){
+      points.push({ t: y, label: formatGraduationYear(Math.round(y), bcFull) });
+    }
+  }
+  return points;
+}
+
+function renderGraduations(div, frise, min, max, span, toPx){
+  const points = computeGraduations(min, max, frise.graduationStep || '100', !!frise.showMonthNames, !!frise.showBCFull);
+  points.forEach(pt=>{
+    const pct = span ? ((pt.t - min) / span) * 100 : 0;
+    const x = toPx(pct);
+
+    const tick = document.createElement('div');
+    tick.className = 'grad-tick';
+    tick.style.left = x + 'px';
+    tick.style.top = (AXIS_Y - 6) + 'px';
+    tick.style.height = '12px';
+    div.appendChild(tick);
+
+    if(frise.graduationLabels !== false){
+      const label = document.createElement('div');
+      label.className = 'grad-label';
+      label.style.left = x + 'px';
+      label.style.top = (AXIS_Y + 9) + 'px';
+      label.textContent = pt.label;
+      div.appendChild(label);
+    }
+  });
+}
+
+/* ================= content parsing ================= */
+
+function parseContent(content, monthNames, bcFull){
+  const lines = content.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+  const events = [];
+  const periods = [];
+  const errors = [];
+
+  lines.forEach((line, idx)=>{
+    const sep = line.indexOf(':');
+    if(sep === -1){ errors.push(`Ligne ${idx+1} : pas de ":" trouvé — "${line.slice(0,40)}"`); return; }
+    const datePart = line.slice(0, sep).trim();
+    let textPart = line.slice(sep+1).trim();
+
+    // Gestion des catégories #Catégorie
+    let category = null;
+    const startMatch = textPart.match(/^#(\S+)\s*/);
+    const endMatch = textPart.match(/\s*#(\S+)$/);
+    if(startMatch){ category = startMatch[1]; textPart = textPart.slice(startMatch[0].length); }
+    else if(endMatch){ category = endMatch[1]; textPart = textPart.slice(0, endMatch.index); }
+    textPart = textPart.trim();
+
+    let html = textPart
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/_(.+?)_/g, '<em>$1</em>');
+
+    // Vérification s'il s'agit d'une PÉRIODE (séparateur " - ")
+    if(datePart.includes(' - ')){
+      const [pStart, pEnd] = datePart.split(' - ').map(s=>s.trim());
+      const d1 = parseDate(pStart);
+      const d2 = parseDate(pEnd);
+      if(!d1 || !d2){ errors.push(`Ligne ${idx+1} : période illisible — "${datePart}"`); return; }
+      d1.label = formatDateLabel(d1, monthNames, bcFull);
+      d2.label = formatDateLabel(d2, monthNames, bcFull);
+      periods.push({ start: d1, end: d2, category, html, raw: line });
+    } else {
+      const parsedDate = parseDate(datePart);
+      if(!parsedDate){ errors.push(`Ligne ${idx+1} : date illisible — "${datePart}"`); return; }
+      parsedDate.label = formatDateLabel(parsedDate, monthNames, bcFull);
+      events.push({ ...parsedDate, category, html, raw: line });
+    }
+  });
+
+  events.sort((a,b)=> a.timeValue - b.timeValue);
+  periods.sort((a,b)=> a.start.timeValue - b.start.timeValue);
+  return { events, periods, errors };
+}
+
+/* ================= couleurs ================= */
+function ensureColors(frise, events){
+  const cats = [...new Set(events.map(e=>e.category).filter(Boolean))];
+  cats.forEach(cat=>{
+    if(!frise.colors[cat]) frise.colors[cat] = PALETTE[Object.keys(frise.colors).length % PALETTE.length];
+  });
+}
+
+/* ================= légende (édition) ================= */
+function renderLegend(frise, events){
+  const cats = [...new Set(events.map(e=>e.category).filter(Boolean))];
+  const box = document.getElementById('legendRows');
+  box.innerHTML = '';
+  if(cats.length === 0){
+    box.innerHTML = '<div class="legend-empty">Ajoutez #Catégorie à un événement pour créer une entrée ici.</div>';
+    return;
+  }
+  cats.forEach(cat=>{
+    const row = document.createElement('div');
+    row.className = 'legend-row';
+    const color = frise.colors[cat] || '#b08a4e';
+    row.innerHTML = `
+      <span class="swatch-btn" style="background:${color}">
+        <input type="color" value="${color}" data-cat="${cat}">
+      </span>
+      <span class="cat-name">${cat}</span>
+    `;
+    const swatch = row.querySelector('.swatch-btn');
+    const input = row.querySelector('input');
+    input.addEventListener('input', (e)=>{
+      frise.colors[cat] = e.target.value;
+      swatch.style.background = e.target.value;
+      persist();
+      renderFrise();
+    });
+    box.appendChild(row);
+  });
+}
+
+/* ================= échelle temporelle (remplace les anciennes "longueurs" manuelles) ================= */
+function renderScaleControls(){
+  const frise = store[currentId];
+  const autoRadio = document.getElementById('scaleAuto');
+  const manualRadio = document.getElementById('scaleManual');
+  const yearsInput = document.getElementById('yearsPerCm');
+
+  const mode = frise.scaleMode || 'auto';
+  autoRadio.checked = (mode === 'auto');
+  manualRadio.checked = (mode === 'manual');
+  yearsInput.value = frise.yearsPerCm || 20;
+  yearsInput.disabled = (mode !== 'manual');
+
+  autoRadio.onclick = ()=>{ frise.scaleMode = 'auto'; persist(); renderFrise(); };
+  manualRadio.onclick = ()=>{ frise.scaleMode = 'manual'; persist(); renderFrise(); };
+  yearsInput.onchange = ()=>{
+    const v = parseFloat(String(yearsInput.value).replace(',','.'));
+    frise.yearsPerCm = (v && v > 0) ? v : 20;
+    persist();
+    renderFrise();
+  };
+}
+
+/* ================= disposition anti-superposition ================= */
+function assignLayout(events, usableWidthPx){
+  const placed = { above: Array.from({length:MAX_TIERS}, ()=>[]), below: Array.from({length:MAX_TIERS}, ()=>[]) };
+  let overflow = false; // devient vrai si au moins un événement n'a trouvé aucune place libre
+  const layout = events.map((ev, i)=>{
+    const px = usableWidthPx * (ev.pct/100);
+    const preferFirst = (i % 2 === 0) ? 'above' : 'below';
+    const sides = [preferFirst, preferFirst==='above'?'below':'above'];
+    for(const side of sides){
+      for(let t=0;t<MAX_TIERS;t++){
+        const arr = placed[side][t];
+        if(!arr.some(p=>Math.abs(p-px) < MIN_GAP_PX)){
+          arr.push(px);
+          return { ...ev, side, tier: t+1 };
+        }
+      }
+    }
+    // repli : les MAX_TIERS étages des deux côtés sont occupés → on le signale (overflow)
+    overflow = true;
+    placed[preferFirst][MAX_TIERS-1].push(px);
+    return { ...ev, side: preferFirst, tier: MAX_TIERS };
+  });
+  return { layout, overflow };
+}
+
+/* ================= rendu horizontal ================= */
+
+function renderFriseHorizontal(container, frise, events, periods = []){
+  const scaleMode = frise.scaleMode || 'auto';
+
+  // Bornes temporelles calculées sur événements ET périodes (sinon une période hors de la
+  // plage des événements simples se retrouverait mal placée, voire hors cadre)
+  const allTimes = [
+    ...events.map(e=>e.timeValue),
+    ...periods.map(p=>p.start.timeValue),
+    ...periods.map(p=>p.end.timeValue)
+  ];
+  const min = Math.min(...allTimes);
+  const max = Math.max(...allTimes);
+  const span = (max - min) || 1;
+
+  let trackWidthPx, autoStretched = false, manualOverflow = false;
+  let layout;
+  const withPct = events.map(ev=>({ ...ev, pct: span ? ((ev.timeValue-min)/span)*100 : 50 }));
+
+  if(scaleMode === 'manual'){
+    // point 2 : l'échelle est fixée par l'utilisateur (années par cm), indépendamment du nombre
+    // de pages — c'est le temps qui pilote la largeur, plus l'inverse.
+    const yearsPerCm = frise.yearsPerCm || 20;
+    const pxPerYear = CM_TO_PX / yearsPerCm;
+    trackWidthPx = Math.max(TRACK_UNIT * 0.2, span * pxPerYear);
+    const res = assignLayout(withPct, trackWidthPx);
+    layout = res.layout;
+    manualOverflow = res.overflow; // on ne force pas l'agrandissement : l'échelle est volontairement fixe
+  } else {
+    // mode automatique : on ajuste le contenu à 1 longueur A4, puis on grandit si ça superpose (point 6)
+    let lengthFactor = frise.lengthFactor || 1;
+    trackWidthPx = TRACK_UNIT * lengthFactor;
+    let res = assignLayout(withPct, trackWidthPx);
+    if(res.overflow){
+      lengthFactor += 1;
+      frise.lengthFactor = lengthFactor;
+      persist();
+      autoStretched = true;
+      trackWidthPx = TRACK_UNIT * lengthFactor;
+      res = assignLayout(withPct, trackWidthPx);
+    }
+    layout = res.layout;
+  }
+
+  // ---- Système de coordonnées unique, en pixels, du début à la fin (point 1) ----
+  // AXIS_START = où se trouve le premier événement (pct=0)
+  // AXIS_END   = où se trouve le dernier événement (pct=100)
+  // la flèche, elle, va jusqu'à AXIS_END + ARROW_EXTRA : elle dépasse donc TOUJOURS
+  // le dernier événement, au lieu de s'arrêter pile dessus.
+  const toPx = (pct) => MARGIN_H + (pct/100) * trackWidthPx;
+  const AXIS_START = toPx(0);
+  const AXIS_END = toPx(100);
+
+  const widthPx = MARGIN_H * 2 + ARROW_EXTRA + trackWidthPx;
+
+  const div = document.createElement('div');
+  div.className = 'frise-h';
+  div.style.width = widthPx + 'px';
+  div.style.minWidth = widthPx + 'px';
+  div.style.height = FRISE_HEIGHT + 'px';
+
+  const axis = document.createElement('div');
+  axis.className = 'axis';
+  axis.style.top = AXIS_Y + 'px';
+  axis.style.left = AXIS_START + 'px';
+  axis.style.width = (AXIS_END + ARROW_EXTRA - AXIS_START) + 'px'; // va jusqu'à la pointe de la flèche
+  div.appendChild(axis);
+
+  const arrow = document.createElement('div');
+  arrow.className = 'arrowhead';
+  arrow.style.top = AXIS_Y + 'px';
+  arrow.style.left = (AXIS_END + ARROW_EXTRA) + 'px'; // pointe de flèche = fin d'axe, au-delà du dernier événement
+  div.appendChild(arrow);
+
+  if(frise.showGraduations){
+    renderGraduations(div, frise, min, max, span, toPx);
+  }
+
+  // ---- Périodes : barre au-dessus du 3e étage, sur le même repère de coordonnées ----
+  periods.forEach(p=>{
+    const pctStart = span ? ((p.start.timeValue-min)/span)*100 : 0;
+    const pctEnd = span ? ((p.end.timeValue-min)/span)*100 : 100;
+    const x1 = toPx(pctStart), x2 = toPx(pctEnd);
+    const color = p.category ? (frise.colors[p.category] || '#b08a4e') : '#1c2321';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'period';
+
+    const bar = document.createElement('div');
+    bar.className = 'period-bar';
+    bar.style.left = x1 + 'px';
+    bar.style.width = Math.max(2, x2 - x1) + 'px';
+    bar.style.top = PERIOD_Y + 'px';
+    bar.style.background = color;
+    wrapper.appendChild(bar);
+
+    [x1, x2].forEach(x=>{
+      const tick = document.createElement('div');
+      tick.className = 'period-tick';
+      tick.style.left = x + 'px';
+      tick.style.top = PERIOD_Y + 'px';
+      tick.style.height = (AXIS_Y - PERIOD_Y) + 'px';
+      tick.style.background = color + '55';
+      wrapper.appendChild(tick);
+    });
+
+    const label = document.createElement('div');
+    label.className = 'period-label';
+    label.style.left = ((x1+x2)/2) + 'px';
+    label.style.top = (PERIOD_Y - 6) + 'px';
+    label.innerHTML = `<div class="date" style="color:${color}">${p.start.label} – ${p.end.label}</div><div class="txt">${p.html}</div>`;
+    wrapper.appendChild(label);
+
+    div.appendChild(wrapper);
+  });
+
+  // ---- Événements ----
+  layout.forEach(ev=>{
+    const color = ev.category ? (frise.colors[ev.category] || '#b08a4e') : '#1c2321';
+    const x = toPx(ev.pct);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'event';
+    wrapper.style.left = x + 'px';
+
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.top = AXIS_Y + 'px';
+    dot.style.background = color;
+    wrapper.appendChild(dot);
+
+    const cardY = ev.side === 'above' ? AXIS_Y - ev.tier * TIER_STEP : AXIS_Y + ev.tier * TIER_STEP;
+
+    // point 2 : pas de trait de liaison pour un siècle — seul le point sur la flèche suffit
+    if(!ev.isCentury){
+      const stem = document.createElement('div');
+      stem.className = 'stem';
+      stem.style.background = color + '77';
+      if(ev.side === 'above'){
+        stem.style.top = cardY + 'px';
+        stem.style.height = (AXIS_Y - 6 - cardY) + 'px';
+      } else {
+        stem.style.top = (AXIS_Y + 6) + 'px';
+        stem.style.height = (cardY - AXIS_Y - 6) + 'px';
+      }
+      wrapper.appendChild(stem);
+    }
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.top = cardY + 'px';
+    card.style.transform = ev.side === 'above'
+      ? 'translate(-50%, -100%)'
+      : 'translate(-50%, 0)';
+    card.innerHTML = `
+      <div class="date" style="color:${color}">${ev.label}</div>
+      <div class="txt">${ev.html}</div>
+    `;
+    wrapper.appendChild(card);
+
+    div.appendChild(wrapper);
+  });
+
+  // ---- Écran : conteneur scrollable classique ----
+  const screenWrap = document.createElement('div');
+  screenWrap.className = 'frise-h-screen';
+  screenWrap.appendChild(div);
+  container.appendChild(screenWrap);
+
+  // ---- Impression : chaque page occupe désormais TOUTE la surface utile de la feuille A4
+  // (PRINT_PAGE_W_PX × PRINT_PAGE_H_PX, cf. @page ci-dessus), quelle que soit la taille "écran"
+  // de la frise. La frise dessinée à sa taille écran (widthPx × FRISE_HEIGHT) est agrandie par
+  // un facteur d'échelle unique `printScale` qui fait correspondre sa hauteur à la hauteur utile
+  // de la page, puis tranchée horizontalement en autant de pages que nécessaire pour couvrir
+  // toute la largeur (point 1 : avant, les pages restaient à la taille écran, bien plus petite
+  // que la feuille physique, d'où la marge blanche inutilisée).
+  // ---- Impression : chaque page occupe désormais TOUTE la surface utile de la feuille A4
+  // (PRINT_PAGE_W_PX × PRINT_PAGE_H_PX, cf. @page ci-dessus), quelle que soit la taille "écran"
+  // de la frise. La frise dessinée à sa taille écran (widthPx × FRISE_HEIGHT) est agrandie par
+  // un facteur d'échelle unique `printScale` qui fait correspondre sa hauteur à la hauteur utile
+  // de la page — MOINS la bande réservée au titre (TITLE_BAR_PX), affiché sur chaque page — puis
+  // tranchée horizontalement en autant de pages que nécessaire pour couvrir toute la largeur
+  // (point 1 : avant, le titre n'était pas compté dans ce calcul, ce qui poussait le contenu
+  // au-delà de la page physique).
+  const printWrap = document.createElement('div');
+  printWrap.className = 'frise-h-print';
+  const printContentH = PRINT_PAGE_H_PX - TITLE_BAR_PX;
+  const printScale = printContentH / FRISE_HEIGHT;
+  const sliceWidth = PRINT_PAGE_W_PX / printScale; // largeur, en coordonnées "écran", couverte par une page
+  const pagesForPrint = Math.max(1, Math.ceil(widthPx / sliceWidth));
+  const legendHTML = buildPrintLegendHTML(frise, [...events, ...periods]);
+  const titleHTML = `<div class="print-page-title">${frise.name || 'Sans titre'}</div>`;
+  for(let i=0;i<pagesForPrint;i++){
+    const page = document.createElement('div');
+    page.className = 'print-page';
+    page.style.width = PRINT_PAGE_W_PX + 'px';
+    page.style.height = PRINT_PAGE_H_PX + 'px';
+    const inner = div.cloneNode(true);
+    inner.style.position = 'absolute';
+    // ⚠️ auparavant : -i*PRINT_PAGE_W_PX, ce qui ne correspondait PAS à la largeur réellement
+    // couverte par une page une fois la mise à l'échelle appliquée (sliceWidth), d'où un décalage
+    // cumulatif d'une page à l'autre.
+    inner.style.left = (-i * sliceWidth) + 'px';
+    inner.style.top = TITLE_BAR_PX + 'px'; // laisse la place au bandeau titre en haut de page
+    inner.style.width = widthPx + 'px';
+    inner.style.minWidth = widthPx + 'px';
+    inner.style.height = FRISE_HEIGHT + 'px';
+    inner.style.transform = `scale(${printScale})`;
+    inner.style.transformOrigin = 'top left';
+    page.appendChild(inner);
+    page.insertAdjacentHTML('beforeend', titleHTML);
+    if(legendHTML) page.insertAdjacentHTML('beforeend', legendHTML);
+    printWrap.appendChild(page);
+  }
+  container.appendChild(printWrap);
+
+  return { autoStretched, manualOverflow };
+}
+
+/* ================= rendu vertical (mobile) ================= */
+
+// Construit le DOM d'une frise verticale (événements + rail + flèche), sans encore positionner
+// le rail/les périodes (qui dépendent de mesures DOM réelles, faites APRÈS insertion — voir
+// positionVerticalOverlay). widthPx est optionnel : utilisé pour forcer la largeur du clone
+// « impression » à la largeur exacte d'une page A4 portrait (voir plus bas).
+function buildFriseVerticalContent(frise, events, widthPx){
+  const div = document.createElement('div');
+  div.className = 'frise-v';
+  if(widthPx) div.style.width = widthPx + 'px';
+  const rail = document.createElement('div'); rail.className='rail';
+  div.appendChild(rail);
+  const arrow = document.createElement('div'); arrow.className='arrowhead-v';
+  div.appendChild(arrow);
+
+  // Seuls les ÉVÉNEMENTS occupent le flux vertical (déjà triés chronologiquement en amont).
+  // Les PÉRIODES n'y sont plus mélangées : n'ayant pas de point qui leur soit propre, une
+  // période commençant avant le premier événement se retrouvait hors de portée du rail
+  // (calé sur le premier/dernier point) et s'affichait tassée en tête de frise. Elles sont
+  // positionnées séparément, PAR INTERPOLATION DE LEUR DATE le long du rail (voir
+  // positionVerticalOverlay), dans la marge de gauche — du côté opposé aux cartes d'événements.
+  const dotRefs = [];
+  const timePoints = []; // un point {timeValue, el} par événement, sert à interpoler les périodes
+  events.forEach(ev=>{
+    const color = ev.category ? (frise.colors[ev.category] || '#b08a4e') : '#1c2321';
+    const el = document.createElement('div');
+    el.className = 'event';
+    el.innerHTML = `
+      <div class="dot" style="background:${color}"></div>
+      <div class="card">
+        <div class="date" style="color:${color}">${ev.label}</div>
+        <div class="txt">${ev.html}</div>
+      </div>
+    `;
+    div.appendChild(el);
+    const dot = el.querySelector('.dot');
+    dotRefs.push(dot);
+    timePoints.push({ timeValue: ev.timeValue, el: dot });
+  });
+
+  return { div, rail, arrow, dotRefs, timePoints };
+}
+
+// Positionne le rail, la flèche et les périodes d'une frise déjà construite et INSÉRÉE dans le
+// DOM (les mesures getBoundingClientRect() exigent un rendu réel). Fonctionne à l'identique pour
+// l'instance écran et pour le clone « impression » (juste construit à une autre largeur).
+// ⚠️ Correction du bug précédent : .dot est positionné en absolute à l'intérieur de .event,
+// qui est lui-même position:relative — donc .dot.offsetTop se mesurait PAR RAPPORT À SON PROPRE
+// .event (toujours ≈5px, la valeur du top CSS), pas par rapport à toute la frise ! Résultat :
+// début et fin se retrouvaient quasiment à la même hauteur → rail minuscule, mal aligné.
+// getBoundingClientRect() donne la position réelle à l'écran, quel que soit l'ancêtre positionné.
+function positionVerticalOverlay(built, frise, periods){
+  const { div, rail, arrow, dotRefs, timePoints } = built;
+  if(dotRefs.length === 0){ rail.style.display='none'; arrow.style.display='none'; return; }
+  const ARROW_EXTRA_V = 22;
+  const containerRect = div.getBoundingClientRect();
+  const firstRect = dotRefs[0].getBoundingClientRect();
+  const lastRect = dotRefs[dotRefs.length-1].getBoundingClientRect();
+  const railLeft = firstRect.left - containerRect.left + firstRect.width/2;
+  const startY = firstRect.top - containerRect.top + firstRect.height/2;
+  const endY = lastRect.top - containerRect.top + lastRect.height/2;
+  rail.style.left = railLeft + 'px';
+  rail.style.top = startY + 'px';
+  rail.style.height = Math.max(0, endY - startY + ARROW_EXTRA_V) + 'px';
+  arrow.style.left = railLeft + 'px';
+  arrow.style.top = (endY + ARROW_EXTRA_V) + 'px';
+
+  // ---- Périodes : trait + étiquette du côté OPPOSÉ des cartes d'événements ----
+  // Les cartes d'événements se déploient à DROITE du rail (padding-left de .event) ; les
+  // périodes sont donc dessinées à GAUCHE, dans la marge réservée par le padding-left de
+  // .frise-v. Leur position verticale (yForTime) est interpolée à partir des mêmes repères
+  // date→Y que les événements, donc elle reste chronologiquement exacte même si aucun
+  // événement n'existe pile à la date de début/fin de la période.
+  const points = timePoints.map(p=>{
+    const r = p.el.getBoundingClientRect();
+    return { t: p.timeValue, y: r.top - containerRect.top + r.height/2 };
+  });
+  const yForTime = (t)=>{
+    if(points.length === 1) return points[0].y;
+    let a = points[0], b = points[1];
+    if(t >= points[points.length-1].t){ a = points[points.length-2]; b = points[points.length-1]; }
+    else{
+      for(let i=0;i<points.length-1;i++){
+        if(t >= points[i].t && t <= points[i+1].t){ a = points[i]; b = points[i+1]; break; }
+      }
+    }
+    return a.y + (t-a.t) * (b.y-a.y) / ((b.t-a.t) || 1);
+  };
+
+  const BAR_X = railLeft - 16;   // trait vertical de la période
+  const LABEL_W = 100;           // largeur de l'étiquette, à gauche du trait
+  periods.forEach(p=>{
+    const color = p.category ? (frise.colors[p.category] || '#b08a4e') : '#1c2321';
+    const y1 = yForTime(p.start.timeValue), y2 = yForTime(p.end.timeValue);
+    const top = Math.min(y1,y2), height = Math.max(4, Math.abs(y2-y1));
+
+    const bar = document.createElement('div');
+    bar.className = 'period-v-bar';
+    bar.style.left = BAR_X + 'px';
+    bar.style.top = top + 'px';
+    bar.style.height = height + 'px';
+    bar.style.background = color;
+    div.appendChild(bar);
+
+    [y1, y2].forEach(y=>{
+      const tick = document.createElement('div');
+      tick.className = 'period-v-tick';
+      tick.style.left = BAR_X + 'px';
+      tick.style.top = y + 'px';
+      tick.style.width = (railLeft - BAR_X) + 'px';
+      tick.style.background = color + '55';
+      div.appendChild(tick);
+    });
+
+    const label = document.createElement('div');
+    label.className = 'period-v-label';
+    label.style.top = ((y1+y2)/2) + 'px';
+    label.style.left = (BAR_X - LABEL_W - 8) + 'px';
+    label.style.width = LABEL_W + 'px';
+    label.innerHTML = `<div class="date" style="color:${color}">${p.start.label} – ${p.end.label}</div><div class="txt">${p.html}</div>`;
+    div.appendChild(label);
+  });
+}
+
+function renderFriseVertical(container, frise, events, periods = []){
+  // ---- Écran ----
+  const screen = buildFriseVerticalContent(frise, events);
+  container.appendChild(screen.div);
+
+  requestAnimationFrame(()=>{
+    positionVerticalOverlay(screen, frise, periods);
+
+    // ---- Impression : la frise est reconstruite à la largeur EXACTE d'une page A4 portrait
+    // (PRINT_PAGE_W_PX_V), hors écran mais bien insérée dans le DOM (visibility:hidden, pas
+    // display:none, sinon aucune mesure n'est possible). Une fois son rail/ses périodes
+    // positionnés avec les mêmes fonctions que la version écran, sa hauteur totale réelle est
+    // mesurée puis découpée en autant de pages A4 portrait que nécessaire — chacune occupant
+    // toute la surface utile de la feuille (point 1 : jusqu'ici, la vue verticale n'avait tout
+    // simplement aucune version imprimée dédiée : le navigateur imprimait la version écran telle
+    // quelle, sans pagination ni mise à l'échelle, d'où la page largement inoccupée).
+    const printBuild = buildFriseVerticalContent(frise, events, PRINT_PAGE_W_PX_V);
+    printBuild.div.style.position = 'absolute';
+    printBuild.div.style.left = '-9999px';
+    printBuild.div.style.top = '0';
+    printBuild.div.style.visibility = 'hidden';
+    document.body.appendChild(printBuild.div);
+
+    requestAnimationFrame(()=>{
+      positionVerticalOverlay(printBuild, frise, periods);
+      const totalHeight = Math.ceil(printBuild.div.getBoundingClientRect().height) + 20;
+      const printContentH = PRINT_PAGE_H_PX_V - TITLE_BAR_PX; // espace réellement dispo pour la frise, titre déduit
+      const pagesForPrint = Math.max(1, Math.ceil(totalHeight / printContentH));
+
+      const printWrap = document.createElement('div');
+      printWrap.className = 'frise-v-print';
+      const legendHTML = buildPrintLegendHTML(frise, [...events, ...periods]);
+      const titleHTML = `<div class="print-page-title">${frise.name || 'Sans titre'}</div>`;
+      for(let i=0;i<pagesForPrint;i++){
+        const page = document.createElement('div');
+        page.className = 'print-page-v';
+        page.style.width = PRINT_PAGE_W_PX_V + 'px';
+        page.style.height = PRINT_PAGE_H_PX_V + 'px';
+        const inner = printBuild.div.cloneNode(true);
+        inner.style.position = 'absolute';
+        inner.style.left = '0';
+        inner.style.top = (TITLE_BAR_PX - i * printContentH) + 'px'; // décalé pour laisser la place au titre
+        inner.style.width = PRINT_PAGE_W_PX_V + 'px';
+        inner.style.visibility = 'visible';
+        page.appendChild(inner);
+        page.insertAdjacentHTML('beforeend', titleHTML);
+        if(legendHTML) page.insertAdjacentHTML('beforeend', legendHTML);
+        printWrap.appendChild(page);
+      }
+      container.appendChild(printWrap);
+      printBuild.div.remove(); // nettoyage du clone de mesure hors écran, plus nécessaire
+    });
+  });
+}
+
+/* ================= légende sur écran + à l'impression ================= */
+function renderLegendBlocks(container, frise, events){
+  const cats = [...new Set(events.map(e=>e.category).filter(Boolean))];
+  if(cats.length === 0) return;
+
+  const onscreen = document.createElement('div');
+  onscreen.className = 'onscreen-legend';
+  cats.forEach(cat=>{
+    const color = frise.colors[cat] || '#b08a4e';
+    onscreen.innerHTML += `<span class="item"><span class="sw" style="background:${color}"></span>${cat}</span>`;
+  });
+  container.appendChild(onscreen);
+}
+
+// Construit le HTML de légende à injecter sur CHAQUE page imprimée (voir renderFriseHorizontal) :
+// une légende globale unique, positionnée une seule fois par rapport à tout le document, ne
+// s'affichait de fait que sur la dernière page imprimée.
+function buildPrintLegendHTML(frise, events){
+  const cats = [...new Set(events.map(e=>e.category).filter(Boolean))];
+  if(cats.length === 0) return '';
+  let html = '<div class="print-legend">';
+  cats.forEach(cat=>{
+    const color = frise.colors[cat] || '#b08a4e';
+    html += `<span class="item"><span class="sw" style="background:${color}"></span>${cat}</span>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function currentOrientation(frise){
+  if(window.innerWidth <= 860) return 'v';
+  return frise.orientation || 'h';
+}
+
+function renderFrise(){
+  const frise = store[currentId];
+  const wrap = document.getElementById('friseWrap');
+  wrap.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'frise-title';
+  title.textContent = frise.name || 'Sans titre';
+  wrap.appendChild(title);
+
+  const monthCheckbox = document.getElementById('showMonthNames');
+  if(monthCheckbox){
+    monthCheckbox.checked = !!frise.showMonthNames;
+    monthCheckbox.onclick = () => {
+      frise.showMonthNames = monthCheckbox.checked;
+      persist();
+      renderFrise();
+    };
+  }
+
+  const bcCheckbox = document.getElementById('showBCFull');
+  if(bcCheckbox){
+    bcCheckbox.checked = !!frise.showBCFull;
+    bcCheckbox.onclick = () => {
+      frise.showBCFull = bcCheckbox.checked;
+      persist();
+      renderFrise();
+    };
+  }
+
+  const gradCheckbox = document.getElementById('showGraduations');
+  const gradStepSelect = document.getElementById('graduationStep');
+  const gradLabelsCheckbox = document.getElementById('graduationLabels');
+  if(gradCheckbox){
+    gradCheckbox.checked = !!frise.showGraduations;
+    gradStepSelect.value = frise.graduationStep || '100';
+    gradLabelsCheckbox.checked = frise.graduationLabels !== false; // activé par défaut
+    gradCheckbox.onclick = () => { frise.showGraduations = gradCheckbox.checked; persist(); renderFrise(); };
+    gradStepSelect.onchange = () => { frise.graduationStep = gradStepSelect.value; persist(); renderFrise(); };
+    gradLabelsCheckbox.onclick = () => { frise.graduationLabels = gradLabelsCheckbox.checked; persist(); renderFrise(); };
+  }
+
+  // ⚠️ monthNames et bcFull sont maintenant transmis à parseContent
+  const { events, periods, errors } = parseContent(frise.content, !!frise.showMonthNames, !!frise.showBCFull);
+  document.getElementById('parseError').textContent = errors.length ? errors.join(' · ') : '';
+
+  const sub = document.createElement('div');
+  sub.className = 'frise-sub';
+  const nbPeriodes = periods.length ? ` · ${periods.length} période${periods.length>1?'s':''}` : '';
+  sub.textContent = events.length
+    ? `${events.length} événement${events.length>1?'s':''}${nbPeriodes} · ${events[0].label} → ${events[events.length-1].label}`
+    : (periods.length ? `${periods.length} période${periods.length>1?'s':''}` : 'Aucun événement pour le moment');
+  wrap.appendChild(sub);
+
+  // ⚠️ un seul bloc de rendu maintenant (l'ancien code appelait renderFriseHorizontal/Vertical deux fois de suite,
+  // ce qui produisait deux frises identiques l'une sous l'autre — la "deuxième page" que vous observiez)
+  if(events.length === 0 && periods.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = `<h3>Rien à afficher</h3><p>Ajoutez des lignes au format <code>date: texte</code> dans l'éditeur.</p>`;
+    wrap.appendChild(empty);
+  } else {
+    ensureColors(frise, [...events, ...periods]);
+    persist();
+    const orient = currentOrientation(frise);
+    let autoStretched = false, manualOverflow = false;
+    if(orient === 'h'){
+      ({ autoStretched, manualOverflow } = renderFriseHorizontal(wrap, frise, events, periods));
+    } else {
+      renderFriseVertical(wrap, frise, events, periods);
+    }
+
+    if(autoStretched){
+      const banner = document.createElement('div');
+      banner.className = 'overflow-banner';
+      banner.textContent = '📄 Trop d\'événements proches pour tenir sur ' + MAX_TIERS + ' niveaux : une feuille A4 a été ajoutée automatiquement pour les espacer.';
+      wrap.insertBefore(banner, sub.nextSibling);
+    } else if(manualOverflow){
+      const banner = document.createElement('div');
+      banner.className = 'overflow-banner';
+      banner.textContent = '📄 Certains événements se superposent avec cette échelle manuelle : essayez une valeur plus petite (moins d\'années par cm).';
+      wrap.insertBefore(banner, sub.nextSibling);
+    }
+    renderLegendBlocks(wrap, frise, [...events, ...periods]);
+  }
+
+  renderLegend(frise, [...events, ...periods]);
+  renderScaleControls();
+  document.getElementById('orientationBtn').textContent =
+    'Vue : ' + ((frise.orientation||'h') === 'h' ? 'horizontale' : 'verticale');
+}
+
+/* ================= dossiers ================= */
+function refreshFolderSelect(){
+  const sel = document.getElementById('folderSelect');
+  sel.innerHTML = '<option value="">Toutes les frises</option>';
+  Object.entries(folders).forEach(([id,f])=>{
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = '📁 ' + f.name;
+    if(id === currentFolderFilter) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  document.getElementById('deleteFolderBtn').style.display = currentFolderFilter ? 'inline-block' : 'none';
+}
+
+function refreshFriseFolderAssign(){
+  const sel = document.getElementById('friseFolderAssign');
+  sel.innerHTML = '<option value="">Sans dossier</option>';
+  Object.entries(folders).forEach(([id,f])=>{
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = f.name;
+    if(store[currentId].folderId === id) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+document.getElementById('folderSelect').addEventListener('change', (e)=>{
+  currentFolderFilter = e.target.value;
+  refreshFolderSelect();
+  refreshFriseSelect();
+});
+
+document.getElementById('newFolderBtn').addEventListener('click', ()=>{
+  const name = prompt('Nom du nouveau dossier :');
+  if(!name) return;
+  const id = makeId('dir');
+  folders[id] = { name };
+  persistFolders();
+  currentFolderFilter = id;
+  refreshFolderSelect();
+  refreshFriseSelect();
+});
+
+document.getElementById('deleteFolderBtn').addEventListener('click', ()=>{
+  if(!currentFolderFilter) return;
+  if(!confirm(`Supprimer le dossier "${folders[currentFolderFilter].name}" ? Les frises qu'il contient seront conservées, sans dossier.`)) return;
+  Object.values(store).forEach(f=>{ if(f.folderId === currentFolderFilter) f.folderId = null; });
+  saveJSON(LS_KEY, store);
+  delete folders[currentFolderFilter];
+  persistFolders();
+  currentFolderFilter = '';
+  refreshFolderSelect();
+  refreshFriseSelect();
+});
+
+document.getElementById('friseFolderAssign').addEventListener('change', (e)=>{
+  store[currentId].folderId = e.target.value || null;
+  persist();
+  refreshFriseSelect();
+});
+
+/* ================= gestion des frises ================= */
+function refreshFriseSelect(){
+  const sel = document.getElementById('friseSelect');
+  sel.innerHTML = '';
+  const entries = Object.entries(store)
+    .filter(([id,f]) => !currentFolderFilter || f.folderId === currentFolderFilter)
+    .sort((a,b)=> b[1].updatedAt - a[1].updatedAt);
+  if(entries.length === 0){
+    const opt = document.createElement('option');
+    opt.textContent = '(aucune frise dans ce dossier)';
+    opt.disabled = true;
+    sel.appendChild(opt);
+    return;
+  }
+  entries.forEach(([id, f])=>{
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = f.name || 'Sans titre';
+    if(id === currentId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if(!entries.some(([id])=>id===currentId)){
+    currentId = entries[0][0];
+    persistCurrentId();
+    loadFriseIntoEditor();
+  }
+}
+
+function loadFriseIntoEditor(){
+  const frise = store[currentId];
+  document.getElementById('friseName').value = frise.name || '';
+  document.getElementById('raw').value = frise.content || '';
+  refreshFriseFolderAssign();
+  renderFrise();
+}
+
+document.getElementById('friseSelect').addEventListener('change', (e)=>{
+  currentId = e.target.value;
+  persistCurrentId();
+  loadFriseIntoEditor();
+});
+
+document.getElementById('newFriseBtn').addEventListener('click', ()=>{
+  const id = makeId('f');
+  store[id] = { name:'Nouvelle frise', content:'', colors:{}, orientation:'h', lengthFactor:1, folderId: currentFolderFilter || null, updatedAt: Date.now() };
+  currentId = id;
+  saveJSON(LS_KEY, store);
+  persistCurrentId();
+  refreshFriseSelect();
+  loadFriseIntoEditor();
+  document.getElementById('friseName').focus();
+});
+
+document.getElementById('deleteBtn').addEventListener('click', ()=>{
+  if(Object.keys(store).length <= 1){ alert('Impossible de supprimer la dernière frise.'); return; }
+  if(!confirm(`Supprimer "${store[currentId].name}" ? Cette action est irréversible.`)) return;
+  delete store[currentId];
+  saveJSON(LS_KEY, store);
+  currentId = Object.keys(store)[0];
+  persistCurrentId();
+  refreshFriseSelect();
+  loadFriseIntoEditor();
+});
+
+document.getElementById('friseName').addEventListener('input', (e)=>{
+  store[currentId].name = e.target.value;
+  persist();
+  refreshFriseSelect();
+  document.querySelector('.frise-title').textContent = e.target.value || 'Sans titre';
+});
+
+/* ================= édition + tri auto ================= */
+let debounceTimer;
+const rawEl = document.getElementById('raw');
+rawEl.addEventListener('input', (e)=>{
+  store[currentId].content = e.target.value;
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(()=>{ persist(); renderFrise(); }, 250);
+});
+rawEl.addEventListener('blur', ()=>{
+  const frise = store[currentId];
+  const { events, periods, errors } = parseContent(rawEl.value, !!frise.showMonthNames, !!frise.showBCFull);
+  if(errors.length === 0 && (events.length > 0 || periods.length > 0)){
+    // on fusionne événements ET périodes (chacun avec sa propre clé de tri) avant de réécrire le texte,
+    // sinon les lignes "date - date : ..." (périodes) étaient tout simplement omises
+    const merged = [
+      ...events.map(e => ({ key: e.timeValue, raw: e.raw })),
+      ...periods.map(p => ({ key: p.start.timeValue, raw: p.raw }))
+    ];
+    merged.sort((a,b)=> a.key - b.key);
+    const sortedText = merged.map(x=>x.raw).join('\n');
+    rawEl.value = sortedText;
+    frise.content = sortedText;
+    persist();
+    renderFrise();
+  }
+});
+
+document.getElementById('orientationBtn').addEventListener('click', ()=>{
+  const frise = store[currentId];
+  frise.orientation = (frise.orientation === 'h') ? 'v' : 'h';
+  persist();
+  renderFrise();
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const frise = store[currentId];
+  const blob = new Blob([frise.content], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (frise.name || 'frise').replace(/[^\w\- ]/g,'') + '.txt';
+  a.click();
+});
+
+document.getElementById('printBtn').addEventListener('click', ()=>{
+  // La feuille A4 par défaut (@page dans le CSS) est en paysage, adaptée à la frise horizontale.
+  // Pour la vue verticale, on bascule temporairement sur une feuille portrait — plus adaptée à
+  // une colonne verticale — en injectant une règle @page qui prend le dessus sur la règle
+  // statique (dernière déclarée = prioritaire), sans quoi la pagination verticale (voir
+  // renderFriseVertical) resterait calée sur des pages portrait alors que le navigateur imprime
+  // sur une feuille paysage : la frise n'occuperait alors plus toute la feuille.
+  const frise = store[currentId];
+  const DYN_STYLE_ID = 'dynamicPageSize';
+  let styleEl = document.getElementById(DYN_STYLE_ID);
+  if(currentOrientation(frise) === 'v'){
+    if(!styleEl){ styleEl = document.createElement('style'); styleEl.id = DYN_STYLE_ID; document.head.appendChild(styleEl); }
+    styleEl.textContent = '@page{ size: A4 portrait; margin: 10mm; }';
+  } else if(styleEl){
+    styleEl.remove();
+  }
+  window.print();
+});
+
+/* mobile tabs */
+const tabEdit = document.getElementById('tabEdit');
+const tabView = document.getElementById('tabView');
+const editorPanel = document.getElementById('editorPanel');
+const viewPanel = document.getElementById('viewPanel');
+tabEdit.addEventListener('click', ()=>{
+  tabEdit.classList.add('active'); tabView.classList.remove('active');
+  editorPanel.classList.add('active-mobile'); viewPanel.classList.remove('active-mobile');
+});
+tabView.addEventListener('click', ()=>{
+  tabView.classList.add('active'); tabEdit.classList.remove('active');
+  viewPanel.classList.add('active-mobile'); editorPanel.classList.remove('active-mobile');
+  renderFrise();
+});
+window.addEventListener('resize', ()=> renderFrise());
+
+/* ================= init ================= */
+refreshFolderSelect();
+refreshFriseSelect();
+loadFriseIntoEditor();
+if(window.innerWidth > 860){
+  editorPanel.classList.add('active-mobile');
+  viewPanel.classList.add('active-mobile');
+}
+</script>
+</body>
+</html>
